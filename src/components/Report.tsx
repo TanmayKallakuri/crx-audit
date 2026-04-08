@@ -13,13 +13,19 @@ interface ReportProps {
 
 export default function Report({ report }: ReportProps) {
   return (
-    <div className="space-y-6 w-full max-w-4xl mx-auto">
+    <div className="stagger pt-8 space-y-5">
       <OverviewCard report={report} />
       <PermissionTable permissions={report.permissions} />
-      <CombinationCards combinations={report.combinations} />
+      {report.combinations.length > 0 && (
+        <CombinationCards combinations={report.combinations} />
+      )}
       <CSPSection csp={report.csp} />
-      <CodePatterns patterns={report.codePatterns} />
-      <HostPermissions findings={report.hostPermissions} />
+      {report.codePatterns.length > 0 && (
+        <CodePatterns patterns={report.codePatterns} />
+      )}
+      {report.hostPermissions.length > 0 && (
+        <HostPermissions findings={report.hostPermissions} />
+      )}
       <ManifestVersion finding={report.manifestVersionAnalysis} />
     </div>
   )

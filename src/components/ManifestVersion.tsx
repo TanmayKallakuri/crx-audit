@@ -1,5 +1,6 @@
 import type { ManifestVersionFinding } from '../types'
-import { riskColor, riskLabel } from '../utils/helpers'
+import { riskDot } from '../utils/helpers'
+import { FileCode } from 'lucide-react'
 
 interface ManifestVersionProps {
   finding: ManifestVersionFinding
@@ -7,39 +8,44 @@ interface ManifestVersionProps {
 
 export default function ManifestVersion({ finding }: ManifestVersionProps) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-100">
+    <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-1)] overflow-hidden">
+      <div className="px-5 py-4 border-b border-[var(--color-border-subtle)] flex items-center gap-2">
+        <FileCode className="w-3.5 h-3.5 text-[var(--color-text-tertiary)]" />
+        <h3 className="font-display font-semibold text-[15px] text-[var(--color-text-primary)]">
           Manifest Version
         </h3>
-        <span
-          className={`px-2.5 py-0.5 text-xs font-medium rounded-full border ${riskColor(finding.risk)}`}
-        >
-          MV{finding.manifestVersion} — {riskLabel(finding.risk)}
-        </span>
       </div>
 
-      <p className="text-sm text-gray-400 mb-4">{finding.description}</p>
-
-      {finding.details.length > 0 && (
-        <ul className="space-y-2">
-          {finding.details.map((detail, i) => (
-            <li
-              key={i}
-              className="flex items-start gap-2 text-sm text-gray-400"
-            >
-              <span className="text-gray-600 mt-0.5 shrink-0">&#8226;</span>
-              {detail}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {finding.manifestVersion === 2 && (
-        <div className="mt-4 bg-orange-500/10 border border-orange-500/20 rounded-lg px-4 py-3 text-sm text-orange-400">
-          Manifest V2 is deprecated. Google is phasing out MV2 extensions — this extension should migrate to MV3 for continued Chrome Web Store support and improved security.
+      <div className="p-5">
+        <div className="flex items-center gap-3 mb-3">
+          <div className={`w-2 h-2 rounded-full ${riskDot(finding.risk)}`} />
+          <span className={`font-mono text-[13px] ${
+            finding.risk === 'medium' ? 'text-amber-400' : 'text-emerald-400'
+          }`}>
+            Manifest V{finding.manifestVersion}
+          </span>
+          <span className="text-[11px] font-mono text-[var(--color-text-tertiary)] uppercase">
+            {finding.risk === 'none' || finding.risk === 'low' ? 'Current' : 'Deprecated'}
+          </span>
         </div>
-      )}
-    </div>
+
+        <p className="text-[13px] text-[var(--color-text-secondary)] mb-3 leading-relaxed">
+          {finding.description}
+        </p>
+
+        {finding.details.length > 0 && (
+          <ul className="space-y-1.5 pl-5">
+            {finding.details.map((detail, i) => (
+              <li
+                key={i}
+                className="text-[12px] text-[var(--color-text-tertiary)] leading-relaxed relative before:content-[''] before:absolute before:left-[-12px] before:top-[8px] before:w-1 before:h-1 before:rounded-full before:bg-[var(--color-text-tertiary)]/40"
+              >
+                {detail}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   )
 }

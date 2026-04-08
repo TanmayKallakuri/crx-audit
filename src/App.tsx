@@ -3,6 +3,7 @@ import ExtensionInput from './components/ExtensionInput'
 import Report from './components/Report'
 import { analyzeExtension } from './analyzer'
 import type { AnalysisReport, ExtensionFiles, InputMethod } from './types'
+import { Shield } from 'lucide-react'
 
 export default function App() {
   const [report, setReport] = useState<AnalysisReport | null>(null)
@@ -13,7 +14,6 @@ export default function App() {
     setError(null)
     setAnalyzing(true)
     setReport(null)
-
     try {
       const result = analyzeExtension(files, method)
       setReport(result)
@@ -30,25 +30,23 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
+    <>
       {/* Header */}
-      <header className="border-b border-gray-800 bg-gray-950/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1
-              className="text-xl font-bold tracking-tight text-gray-100 cursor-pointer"
-              onClick={handleReset}
-            >
+      <header className="sticky top-0 z-50 border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-0)]/90 backdrop-blur-xl">
+        <div className="max-w-[1100px] mx-auto px-6 h-14 flex items-center justify-between">
+          <button onClick={handleReset} className="flex items-center gap-2.5 group">
+            <Shield className="w-5 h-5 text-amber-500 group-hover:text-amber-400 transition-colors" />
+            <span className="font-display font-bold text-[15px] tracking-tight text-[var(--color-text-primary)]">
               CRX Audit
-            </h1>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Chrome Extension Security Analyzer
-            </p>
-          </div>
+            </span>
+            <span className="text-[11px] font-mono text-[var(--color-text-tertiary)] hidden sm:inline">
+              v1.0
+            </span>
+          </button>
           {report && (
             <button
               onClick={handleReset}
-              className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
+              className="text-[13px] font-medium text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors font-display"
             >
               New Scan
             </button>
@@ -57,16 +55,20 @@ export default function App() {
       </header>
 
       {/* Main */}
-      <main className="max-w-5xl mx-auto px-6 py-10">
+      <main className="max-w-[1100px] mx-auto px-6 pb-20">
         {!report && !analyzing && (
-          <div className="pt-8">
-            <div className="text-center mb-10">
-              <h2 className="text-2xl font-semibold text-gray-100 mb-2">
-                Analyze a Chrome Extension
-              </h2>
-              <p className="text-sm text-gray-500 max-w-md mx-auto">
-                Upload a .crx file, paste a manifest, or enter an extension ID to scan
-                for security issues, risky permissions, and suspicious code patterns.
+          <div className="animate-fade-up pt-16 sm:pt-24">
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[11px] font-mono font-medium tracking-wide uppercase mb-6">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                Open Source Security Analysis
+              </div>
+              <h1 className="font-display font-bold text-3xl sm:text-4xl tracking-tight text-[var(--color-text-primary)] mb-3">
+                Analyze Chrome Extensions
+              </h1>
+              <p className="text-[15px] text-[var(--color-text-secondary)] max-w-md mx-auto leading-relaxed">
+                Transparent permission analysis, dangerous combination detection,
+                and CSP evaluation. All client-side.
               </p>
             </div>
             <ExtensionInput onAnalyze={handleAnalyze} />
@@ -74,14 +76,19 @@ export default function App() {
         )}
 
         {analyzing && (
-          <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-gray-400">Running security analysis...</p>
+          <div className="flex flex-col items-center justify-center py-32 gap-5 animate-fade-in">
+            <div className="relative">
+              <div className="w-10 h-10 border-2 border-amber-500/30 rounded-full" />
+              <div className="absolute inset-0 w-10 h-10 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+            <p className="text-sm font-mono text-[var(--color-text-tertiary)]">
+              Analyzing extension...
+            </p>
           </div>
         )}
 
         {error && (
-          <div className="max-w-2xl mx-auto bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-400 mb-6">
+          <div className="max-w-xl mx-auto mt-8 bg-red-500/8 border border-red-500/20 rounded-lg px-4 py-3 text-sm text-red-400 font-mono animate-fade-up">
             {error}
           </div>
         )}
@@ -90,11 +97,12 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-gray-800 mt-16">
-        <div className="max-w-5xl mx-auto px-6 py-4 text-center text-xs text-gray-600">
-          CRX Audit — Static analysis only. Does not execute extension code.
+      <footer className="border-t border-[var(--color-border-subtle)] py-6">
+        <div className="max-w-[1100px] mx-auto px-6 flex items-center justify-between text-[11px] font-mono text-[var(--color-text-tertiary)]">
+          <span>CRX Audit — Static analysis only</span>
+          <span>Does not execute extension code</span>
         </div>
       </footer>
-    </div>
+    </>
   )
 }

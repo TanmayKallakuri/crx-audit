@@ -1,5 +1,6 @@
 import type { HostPermissionFinding } from '../types'
-import { riskColor, riskLabel } from '../utils/helpers'
+import { riskDot, riskLabel } from '../utils/helpers'
+import { Globe } from 'lucide-react'
 
 interface HostPermissionsProps {
   findings: HostPermissionFinding[]
@@ -9,40 +10,43 @@ export default function HostPermissions({ findings }: HostPermissionsProps) {
   if (findings.length === 0) return null
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-      <h3 className="text-lg font-semibold text-gray-100 mb-4">
-        Host Permissions
-        <span className="text-sm font-normal text-gray-500 ml-2">({findings.length})</span>
-      </h3>
+    <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-1)] overflow-hidden">
+      <div className="px-5 py-4 border-b border-[var(--color-border-subtle)] flex items-center gap-2">
+        <Globe className="w-3.5 h-3.5 text-[var(--color-text-tertiary)]" />
+        <h3 className="font-display font-semibold text-[15px] text-[var(--color-text-primary)]">
+          Host Permissions
+          <span className="ml-2 text-[12px] font-mono font-normal text-[var(--color-text-tertiary)]">
+            {findings.length}
+          </span>
+        </h3>
+      </div>
 
-      <div className="space-y-3">
+      <div className="divide-y divide-[var(--color-border-subtle)]">
         {findings.map((finding, i) => (
-          <div
-            key={i}
-            className="bg-gray-950 border border-gray-800 rounded-lg px-4 py-3"
-          >
-            <div className="flex items-start justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-sm text-gray-200">{finding.pattern}</span>
-                <span className="px-2 py-0.5 text-xs bg-gray-800 text-gray-400 rounded">
-                  {finding.type}
-                </span>
-              </div>
-              <span
-                className={`px-2.5 py-0.5 text-xs font-medium rounded-full border shrink-0 ${riskColor(finding.risk)}`}
-              >
+          <div key={i} className="p-5">
+            <div className="flex items-center gap-3 mb-2">
+              <div className={`w-2 h-2 rounded-full shrink-0 ${riskDot(finding.risk)}`} />
+              <span className="font-mono text-[13px] text-[var(--color-text-primary)]">
+                {finding.pattern}
+              </span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--color-surface-3)] text-[var(--color-text-tertiary)]">
+                {finding.type}
+              </span>
+              <span className="text-[11px] font-mono text-[var(--color-text-tertiary)] uppercase ml-auto">
                 {riskLabel(finding.risk)}
               </span>
             </div>
-            <p className="text-sm text-gray-400">{finding.description}</p>
+            <p className="text-[13px] text-[var(--color-text-secondary)] leading-relaxed pl-5">
+              {finding.description}
+            </p>
             {finding.suggestion && (
-              <p className="text-xs text-blue-400 mt-2">
-                Suggestion: {finding.suggestion}
+              <p className="text-[12px] text-emerald-500/70 mt-1.5 pl-5 font-mono">
+                {finding.suggestion}
               </p>
             )}
           </div>
         ))}
       </div>
-    </div>
+    </section>
   )
 }
