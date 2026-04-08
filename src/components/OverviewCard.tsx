@@ -1,4 +1,6 @@
 import type { AnalysisReport } from '../types'
+import { downloadReport } from '../utils/report-export'
+import { Download } from 'lucide-react'
 
 interface OverviewCardProps {
   report: AnalysisReport
@@ -65,12 +67,21 @@ export default function OverviewCard({ report }: OverviewCardProps) {
               <span>{new Date(metadata.analyzedAt).toLocaleDateString()}</span>
             </div>
           </div>
-          <div className={`px-3 py-1 rounded-md text-[11px] font-mono font-medium ${
-            manifestVersionAnalysis.risk === 'medium'
-              ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-              : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-          }`}>
-            MV{metadata.manifestVersion}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => downloadReport(report)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono font-medium bg-[var(--color-surface-3)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-text-tertiary)] transition-all"
+            >
+              <Download className="w-3 h-3" />
+              Export
+            </button>
+            <div className={`px-3 py-1.5 rounded-md text-[11px] font-mono font-medium ${
+              manifestVersionAnalysis.risk === 'medium'
+                ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+            }`}>
+              MV{metadata.manifestVersion}
+            </div>
           </div>
         </div>
 
