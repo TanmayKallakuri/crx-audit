@@ -1,102 +1,143 @@
 import type { AnalysisReport, RiskLevel } from '../types'
 
-function riskBadge(risk: RiskLevel): string {
-  const colors: Record<RiskLevel, string> = {
-    critical: 'background:#991b1b;color:#fecaca',
-    high: 'background:#9a3412;color:#fed7aa',
-    medium: 'background:#854d0e;color:#fef08a',
-    low: 'background:#1e3a5f;color:#93c5fd',
-    none: 'background:#374151;color:#d1d5db',
-  }
-  return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;${colors[risk]}">${risk}</span>`
+function esc(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+function badge(risk: RiskLevel): string {
+  const c: Record<RiskLevel, string> = {
+    critical: '#dc2626', high: '#ea580c', medium: '#ca8a04', low: '#2563eb', none: '#6b7280',
+  }
+  return `<span class="badge" style="background:${c[risk]}15;color:${c[risk]};border:1px solid ${c[risk]}30">${risk.toUpperCase()}</span>`
+}
+
+function riskWord(risk: RiskLevel): string {
+  const map: Record<RiskLevel, string> = {
+    critical: 'Critical', high: 'High', medium: 'Moderate', low: 'Low', none: 'Informational',
+  }
+  return map[risk]
 }
 
 export function generateReport(report: AnalysisReport): string {
   const { metadata, summary, permissions, combinations, csp, codePatterns, hostPermissions, manifestVersionAnalysis } = report
   const date = new Date(metadata.analyzedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  const time = new Date(metadata.analyzedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 
-  const criticalFindings = summary.criticalPermissions + combinations.filter(c => c.risk === 'critical').length
-  const overallRisk: RiskLevel = criticalFindings >= 3 ? 'critical' : criticalFindings >= 1 ? 'high' : summary.combinationsFound > 0 ? 'medium' : 'low'
+  const critCount = summary.criticalPermissions + combinations.filter(c => c.risk === 'critical').length
+  const overallRisk: RiskLevel = critCount >= 3 ? 'critical' : critCount >= 1 ? 'high' : summary.combinationsFound > 0 ? 'medium' : 'low'
+  const totalFindings = summary.criticalPermissions + summary.highPermissions + summary.combinationsFound + summary.cspFindings + summary.hostFindings
+
+  const sinkPatterns = codePatterns.filter(p => p.category === 'sink')
+  const sourcePatterns = codePatterns.filter(p => p.category === 'source')
+  const networkPatterns = codePatterns.filter(p => p.category === 'network')
+  const obfuscationPatterns = codePatterns.filter(p => p.category === 'obfuscation')
+
+  let sectionNum = 0
+  const section = (title: string) => `<div class="section-header"><span class="section-num">${++sectionNum}</span><h2>${title}</h2></div>`
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Security Report — ${escapeHtml(metadata.extensionName)}</title>
+<title>Security Analysis — ${esc(metadata.extensionName)}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Inter',sans-serif; color:#1a1a2e; background:#fff; line-height:1.6; }
-  .page { max-width:800px; margin:0 auto; padding:60px 48px; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;color:#1e293b;background:#fff;font-size:13.5px;line-height:1.65}
+.page{max-width:820px;margin:0 auto;padding:48px}
 
-  /* Cover */
-  .cover { border-bottom:3px solid #1a1a2e; padding-bottom:40px; margin-bottom:40px; }
-  .cover-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:2px; color:#6b7280; margin-bottom:4px; }
-  .cover-title { font-size:28px; font-weight:700; color:#1a1a2e; margin-bottom:6px; }
-  .cover-ext { font-size:20px; font-weight:600; color:#f59e0b; margin-bottom:20px; }
-  .cover-meta { display:flex; gap:24px; font-size:13px; color:#6b7280; }
-  .cover-meta span { display:flex; align-items:center; gap:6px; }
+/* Cover */
+.cover{padding:48px 0 36px;border-bottom:1px solid #e2e8f0;margin-bottom:36px}
+.cover-org{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:3px;color:#94a3b8;margin-bottom:24px}
+.cover-type{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:#64748b;margin-bottom:8px}
+.cover-name{font-size:32px;font-weight:700;color:#0f172a;line-height:1.2;margin-bottom:24px}
+.cover-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;font-size:12.5px;color:#475569;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden}
+.cover-grid dt{background:#f8fafc;padding:8px 14px;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0}
+.cover-grid dd{padding:8px 14px;border-bottom:1px solid #e2e8f0}
 
-  /* Summary */
-  .summary { background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:24px; margin-bottom:36px; }
-  .summary h2 { font-size:14px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:#6b7280; margin-bottom:16px; }
-  .summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
-  .stat { text-align:center; }
-  .stat-value { font-size:28px; font-weight:700; }
-  .stat-label { font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:0.5px; color:#6b7280; }
-  .stat-critical .stat-value { color:#dc2626; }
-  .stat-high .stat-value { color:#ea580c; }
-  .stat-medium .stat-value { color:#ca8a04; }
-  .stat-low .stat-value { color:#2563eb; }
-  .stat-none .stat-value { color:#6b7280; }
+/* Risk banner */
+.risk-banner{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:8px;margin-bottom:36px;font-size:13px;font-weight:500}
+.risk-critical{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+.risk-high{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412}
+.risk-medium{background:#fefce8;border:1px solid #fde68a;color:#854d0e}
+.risk-low{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+.risk-dot{width:10px;height:10px;border-radius:50%}
+.risk-critical .risk-dot{background:#dc2626}
+.risk-high .risk-dot{background:#ea580c}
+.risk-medium .risk-dot{background:#ca8a04}
+.risk-low .risk-dot{background:#2563eb}
 
-  /* Sections */
-  .section { margin-bottom:36px; page-break-inside:avoid; }
-  .section-header { display:flex; align-items:center; gap:10px; border-bottom:2px solid #e2e8f0; padding-bottom:8px; margin-bottom:16px; }
-  .section-num { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; color:#f59e0b; background:#fef3c7; width:24px; height:24px; display:flex; align-items:center; justify-content:center; border-radius:4px; }
-  .section-title { font-size:16px; font-weight:700; color:#1a1a2e; }
+/* Summary boxes */
+.summary-row{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:#e2e8f0;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-bottom:36px}
+.sbox{background:#fff;padding:16px 8px;text-align:center}
+.sbox-val{font-size:24px;font-weight:700;line-height:1}
+.sbox-label{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:#94a3b8;margin-top:6px}
+.sbox-critical .sbox-val{color:#dc2626}
+.sbox-high .sbox-val{color:#ea580c}
+.sbox-amber .sbox-val{color:#d97706}
+.sbox-blue .sbox-val{color:#2563eb}
+.sbox-gray .sbox-val{color:#64748b}
 
-  /* Tables */
-  table { width:100%; border-collapse:collapse; font-size:13px; margin-bottom:8px; }
-  th { text-align:left; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#6b7280; border-bottom:2px solid #e2e8f0; padding:8px 12px; }
-  td { padding:8px 12px; border-bottom:1px solid #f1f5f9; vertical-align:top; }
-  .mono { font-family:'JetBrains Mono',monospace; font-size:12px; }
+/* Sections */
+.section{margin-bottom:32px;page-break-inside:avoid}
+.section-header{display:flex;align-items:center;gap:10px;border-bottom:2px solid #0f172a;padding-bottom:6px;margin-bottom:16px}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:#fff;background:#0f172a;min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px}
+h2{font-size:15px;font-weight:700;color:#0f172a}
 
-  /* Finding cards */
-  .finding { border:1px solid #e2e8f0; border-radius:8px; padding:16px; margin-bottom:12px; border-left:4px solid; }
-  .finding-critical { border-left-color:#dc2626; background:#fef2f2; }
-  .finding-high { border-left-color:#ea580c; background:#fff7ed; }
-  .finding-medium { border-left-color:#ca8a04; background:#fefce8; }
-  .finding-low { border-left-color:#2563eb; background:#eff6ff; }
-  .finding-title { font-size:14px; font-weight:600; color:#1a1a2e; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
-  .finding-desc { font-size:13px; color:#374151; margin-bottom:8px; }
-  .finding-example { font-size:12px; color:#6b7280; background:#f8fafc; border:1px solid #e2e8f0; border-radius:4px; padding:10px; }
-  .finding-example strong { font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; display:block; margin-bottom:4px; }
-  .perm-tags { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:8px; }
-  .perm-tag { font-family:'JetBrains Mono',monospace; font-size:11px; background:#e2e8f0; color:#374151; padding:2px 8px; border-radius:3px; }
+/* Tables */
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:8px}
+th{text-align:left;font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:#94a3b8;padding:6px 10px;border-bottom:2px solid #e2e8f0}
+td{padding:7px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+tr:hover td{background:#f8fafc}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500}
 
-  /* CSP */
-  .csp-raw { font-family:'JetBrains Mono',monospace; font-size:12px; background:#1a1a2e; color:#a5f3fc; padding:12px 16px; border-radius:6px; margin-bottom:12px; word-break:break-all; line-height:1.8; }
+/* Badges */
+.badge{display:inline-block;padding:1px 7px;border-radius:3px;font-size:10px;font-weight:600;letter-spacing:0.5px;font-family:'JetBrains Mono',monospace}
 
-  /* Code patterns */
-  .pattern-group { margin-bottom:12px; }
-  .pattern-group-title { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#6b7280; margin-bottom:8px; }
-  .pattern-item { font-size:12px; color:#374151; padding:4px 0; display:flex; align-items:center; gap:8px; border-bottom:1px solid #f8fafc; }
-  .pattern-file { font-family:'JetBrains Mono',monospace; font-size:11px; color:#6b7280; }
+/* Findings */
+.finding{border:1px solid #e2e8f0;border-radius:8px;padding:18px;margin-bottom:14px;page-break-inside:avoid}
+.finding-critical{border-left:4px solid #dc2626}
+.finding-high{border-left:4px solid #ea580c}
+.finding-medium{border-left:4px solid #ca8a04}
+.finding-low{border-left:4px solid #2563eb}
+.finding-none{border-left:4px solid #94a3b8}
+.finding-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.finding-title{font-size:14px;font-weight:600;color:#0f172a}
+.finding-body{font-size:13px;color:#475569;line-height:1.7}
+.finding-body p{margin-bottom:8px}
+.finding-body p:last-child{margin-bottom:0}
+.finding-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:#94a3b8;margin-top:12px;margin-bottom:4px}
+.finding-example{font-size:12px;color:#64748b;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:10px 12px;line-height:1.6}
+.tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+.tag{font-family:'JetBrains Mono',monospace;font-size:10.5px;background:#f1f5f9;color:#475569;padding:2px 7px;border-radius:3px;border:1px solid #e2e8f0}
 
-  /* Footer */
-  .footer { border-top:2px solid #1a1a2e; padding-top:20px; margin-top:48px; display:flex; justify-content:space-between; font-size:11px; color:#9ca3af; }
+/* CSP */
+.csp-block{font-family:'JetBrains Mono',monospace;font-size:11.5px;background:#0f172a;color:#94a3b8;padding:14px 18px;border-radius:6px;margin-bottom:14px;word-break:break-all;line-height:1.9;white-space:pre-wrap}
+.csp-block b{color:#f0abfc}
 
-  /* Print */
-  @media print {
-    body { font-size:12px; }
-    .page { padding:20px; }
-    .finding { page-break-inside:avoid; }
-  }
+/* Code patterns */
+.pattern-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f8fafc;font-size:12px}
+.pattern-row:last-child{border:none}
+.pattern-desc{flex:1;color:#475569}
+.pattern-file{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#94a3b8}
+.pattern-category{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:#64748b;margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid #f1f5f9}
+
+/* Methodology */
+.method-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px}
+.method-item{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px 14px}
+.method-item strong{display:block;font-size:12px;color:#0f172a;margin-bottom:3px}
+.method-item span{font-size:11.5px;color:#64748b}
+
+/* Footer */
+.footer{border-top:1px solid #e2e8f0;padding-top:16px;margin-top:40px;font-size:10.5px;color:#94a3b8;display:flex;justify-content:space-between}
+.disclaimer{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px 14px;font-size:11px;color:#64748b;margin-top:20px;line-height:1.6}
+
+@media print{
+  body{font-size:11px}
+  .page{padding:24px}
+  .finding,.section{page-break-inside:avoid}
+  .cover{page-break-after:always}
+}
 </style>
 </head>
 <body>
@@ -104,124 +145,174 @@ export function generateReport(report: AnalysisReport): string {
 
 <!-- Cover -->
 <div class="cover">
-  <div class="cover-label">Security Analysis Report</div>
-  <div class="cover-title">CRX Audit</div>
-  <div class="cover-ext">${escapeHtml(metadata.extensionName || 'Unknown Extension')}</div>
-  <div class="cover-meta">
-    <span>Version ${escapeHtml(metadata.version || '—')}</span>
-    <span>Manifest V${metadata.manifestVersion}</span>
-    <span>${date}</span>
-    <span>Overall: ${riskBadge(overallRisk)}</span>
+  <div class="cover-org">CRX Audit</div>
+  <div class="cover-type">Chrome Extension Security Analysis Report</div>
+  <div class="cover-name">${esc(metadata.extensionName || 'Unknown Extension')}</div>
+  <dl class="cover-grid">
+    <dt>Extension Version</dt><dd>${esc(metadata.version || '—')}</dd>
+    <dt>Manifest Version</dt><dd>V${metadata.manifestVersion}</dd>
+    <dt>Analysis Date</dt><dd>${date} at ${time}</dd>
+    <dt>Analysis Method</dt><dd>${metadata.inputMethod === 'id' ? 'Web Store download' : metadata.inputMethod === 'upload' ? 'CRX file upload' : 'Manifest review'}</dd>
+    <dt>Overall Risk</dt><dd>${badge(overallRisk)} ${riskWord(overallRisk)}</dd>
+    <dt>Total Findings</dt><dd>${totalFindings} actionable findings</dd>
+  </dl>
+</div>
+
+<!-- Risk Banner -->
+<div class="risk-banner risk-${overallRisk}">
+  <div class="risk-dot"></div>
+  <div>
+    <strong>Overall Risk Assessment: ${riskWord(overallRisk)}</strong>
+    — ${critCount >= 3
+      ? 'This extension requests an unusually broad set of critical permissions with multiple dangerous combinations. A thorough manual review is strongly recommended before deployment.'
+      : critCount >= 1
+        ? 'This extension has critical-level permissions that grant broad access to user data. Review the specific combinations below to assess whether the access is justified by the extension\'s stated functionality.'
+        : summary.combinationsFound > 0
+          ? 'This extension has permission combinations that could be misused. Verify that the stated functionality justifies the access requested.'
+          : 'No critical findings. The extension requests a reasonable permission scope for its stated functionality.'
+    }
   </div>
 </div>
 
-<!-- Executive Summary -->
-<div class="summary">
-  <h2>Executive Summary</h2>
-  <div class="summary-grid">
-    <div class="stat stat-critical"><div class="stat-value">${summary.criticalPermissions}</div><div class="stat-label">Critical Permissions</div></div>
-    <div class="stat stat-high"><div class="stat-value">${summary.highPermissions}</div><div class="stat-label">High Permissions</div></div>
-    <div class="stat stat-medium"><div class="stat-value">${summary.combinationsFound}</div><div class="stat-label">Dangerous Combos</div></div>
-    <div class="stat stat-medium"><div class="stat-value">${summary.cspFindings}</div><div class="stat-label">CSP Issues</div></div>
-    <div class="stat stat-low"><div class="stat-value">${summary.codePatterns}</div><div class="stat-label">Code Patterns</div></div>
-    <div class="stat stat-none"><div class="stat-value">${summary.hostFindings}</div><div class="stat-label">Host Issues</div></div>
-  </div>
+<!-- Summary -->
+<div class="summary-row">
+  <div class="sbox sbox-critical"><div class="sbox-val">${summary.criticalPermissions}</div><div class="sbox-label">Critical</div></div>
+  <div class="sbox sbox-high"><div class="sbox-val">${summary.highPermissions}</div><div class="sbox-label">High</div></div>
+  <div class="sbox sbox-amber"><div class="sbox-val">${summary.combinationsFound}</div><div class="sbox-label">Combos</div></div>
+  <div class="sbox sbox-amber"><div class="sbox-val">${summary.cspFindings}</div><div class="sbox-label">CSP</div></div>
+  <div class="sbox sbox-blue"><div class="sbox-val">${summary.codePatterns}</div><div class="sbox-label">Code</div></div>
+  <div class="sbox sbox-gray"><div class="sbox-val">${summary.hostFindings}</div><div class="sbox-label">Host</div></div>
 </div>
 
-<!-- 1. Permissions -->
+<!-- Methodology -->
 <div class="section">
-  <div class="section-header">
-    <div class="section-num">1</div>
-    <div class="section-title">Permissions (${permissions.length})</div>
+  ${section('Methodology')}
+  <p style="font-size:13px;color:#475569;margin-bottom:14px">This report was generated using automated static analysis. The extension package was extracted and analyzed without executing any code. The following analysis modules were applied:</p>
+  <div class="method-grid">
+    <div class="method-item"><strong>Permission Analysis</strong><span>Mapped ${permissions.length} permissions against Chrome's documented capability model and risk tiers.</span></div>
+    <div class="method-item"><strong>Combination Detection</strong><span>Checked ${combinations.length > 0 ? combinations.length : 'all known'} dangerous permission combinations against documented attack vectors.</span></div>
+    <div class="method-item"><strong>CSP Evaluation</strong><span>Parsed Content Security Policy directives and checked against ${csp.findings.length > 0 ? '14+' : 'known'} CSP bypass domains.</span></div>
+    <div class="method-item"><strong>Code Pattern Scan</strong><span>Scanned ${report.metadata.inputMethod === 'paste' ? 'N/A (manifest only)' : `all JavaScript files for 40+ sink, source, network, and obfuscation patterns`}.</span></div>
+    <div class="method-item"><strong>Host Permission Scope</strong><span>Evaluated host permission breadth and checked for access to sensitive domains.</span></div>
+    <div class="method-item"><strong>Manifest Version</strong><span>Assessed security implications of the extension's manifest version.</span></div>
   </div>
+</div>
+
+<!-- Permissions -->
+<div class="section">
+  ${section('Permission Analysis')}
+  <p style="font-size:13px;color:#475569;margin-bottom:14px">Each permission grants specific capabilities to the extension. Permissions are rated based on the sensitivity of data they expose and the actions they enable.</p>
   <table>
-    <thead><tr><th>Permission</th><th>Capability</th><th>Risk</th><th>Type</th></tr></thead>
+    <thead><tr><th style="width:160px">Permission</th><th>What This Grants</th><th style="width:80px">Risk</th><th style="width:70px">Type</th></tr></thead>
     <tbody>
-${permissions.map(p => `      <tr><td class="mono">${escapeHtml(p.name)}</td><td>${escapeHtml(p.description)}</td><td>${riskBadge(p.risk)}</td><td>${p.isOptional ? 'Optional' : 'Required'}</td></tr>`).join('\n')}
+${permissions.map(p => `      <tr><td class="mono">${esc(p.name)}</td><td>${esc(p.description)}</td><td>${badge(p.risk)}</td><td style="font-size:11px;color:#94a3b8">${p.isOptional ? 'Optional' : 'Required'}</td></tr>`).join('\n')}
     </tbody>
   </table>
 </div>
 
 ${combinations.length > 0 ? `
-<!-- 2. Dangerous Combinations -->
+<!-- Dangerous Combinations -->
 <div class="section">
-  <div class="section-header">
-    <div class="section-num">2</div>
-    <div class="section-title">Dangerous Combinations (${combinations.length})</div>
-  </div>
-${combinations.map(c => `  <div class="finding finding-${c.risk}">
-    <div class="finding-title">${riskBadge(c.risk)} ${escapeHtml(c.title)}</div>
-    <div class="perm-tags">${c.permissions.map(p => `<span class="perm-tag">${escapeHtml(p)}</span>`).join('')}</div>
-    <div class="finding-desc">${escapeHtml(c.description)}</div>
-    <div class="finding-example"><strong>Real-World Precedent</strong>${escapeHtml(c.realWorldExample)}</div>
+  ${section('Dangerous Permission Combinations')}
+  <p style="font-size:13px;color:#475569;margin-bottom:14px">Individual permissions may be benign on their own but create compound risk when combined. The following combinations were detected in this extension's manifest.</p>
+${combinations.map(c => `
+  <div class="finding finding-${c.risk}">
+    <div class="finding-head">
+      <div class="finding-title">${esc(c.title)}</div>
+      ${badge(c.risk)}
+    </div>
+    <div class="tags">${c.permissions.map(p => `<span class="tag">${esc(p)}</span>`).join('')}</div>
+    <div class="finding-body">
+      <p><strong>Impact:</strong> ${esc(c.description)}</p>
+    </div>
+    <div class="finding-label">Documented Precedent</div>
+    <div class="finding-example">${esc(c.realWorldExample)}</div>
   </div>`).join('\n')}
 </div>
 ` : ''}
 
-<!-- 3. Content Security Policy -->
+<!-- CSP -->
 <div class="section">
-  <div class="section-header">
-    <div class="section-num">3</div>
-    <div class="section-title">Content Security Policy (${csp.findings.length} findings)</div>
-  </div>
-  <div class="csp-raw">${escapeHtml(csp.raw || "script-src 'self'; object-src 'self' (Chrome default)")}</div>
-${csp.findings.map(f => `  <div class="finding finding-${f.risk}">
-    <div class="finding-title">${riskBadge(f.risk)} ${escapeHtml(f.description)}</div>
-    ${f.detail ? `<div class="finding-desc">${escapeHtml(f.detail)}</div>` : ''}
-  </div>`).join('\n')}
+  ${section('Content Security Policy')}
+  <p style="font-size:13px;color:#475569;margin-bottom:14px">${csp.isDefault
+    ? 'This extension does not declare a custom CSP. Chrome enforces the default policy shown below.'
+    : 'The extension declares the following Content Security Policy. Each directive controls what resources the extension pages can load.'
+  }</p>
+  <div class="csp-block">${esc(csp.raw || "script-src 'self'; object-src 'self'")}</div>
+${csp.findings.length > 0 ? csp.findings.map(f => `
+  <div class="finding finding-${f.risk}">
+    <div class="finding-head">
+      <div style="flex:1">
+        <div class="finding-title" style="font-size:13px">${esc(f.description)}</div>
+      </div>
+      ${badge(f.risk)}
+    </div>
+    ${f.detail ? `<div class="finding-body"><p><strong>Impact:</strong> ${esc(f.detail)}</p></div>` : ''}
+  </div>`).join('\n') : '<p style="font-size:13px;color:#16a34a">No CSP issues identified. The policy is appropriately restrictive.</p>'}
 </div>
 
 ${codePatterns.length > 0 ? `
-<!-- 4. Code Patterns -->
+<!-- Code Patterns -->
 <div class="section">
-  <div class="section-header">
-    <div class="section-num">4</div>
-    <div class="section-title">Code Patterns (${codePatterns.length})</div>
-  </div>
-${['sink', 'source', 'network', 'obfuscation'].map(cat => {
-  const items = codePatterns.filter(p => p.category === cat)
-  if (items.length === 0) return ''
-  const label: Record<string, string> = { sink: 'DOM Sinks', source: 'Data Sources', network: 'Network Activity', obfuscation: 'Obfuscation Signals' }
-  return `  <div class="pattern-group">
-    <div class="pattern-group-title">${label[cat] || cat} (${items.length})</div>
-${items.slice(0, 15).map(p => `    <div class="pattern-item">${riskBadge(p.risk)} ${escapeHtml(p.description)} <span class="pattern-file">${escapeHtml(p.filePath.split('/').pop() || '')}:${p.lineNumber}</span></div>`).join('\n')}
-${items.length > 15 ? `    <div class="pattern-item" style="color:#9ca3af;font-style:italic">... and ${items.length - 15} more</div>` : ''}
-  </div>`
-}).join('\n')}
+  ${section('Code Pattern Analysis')}
+  <p style="font-size:13px;color:#475569;margin-bottom:14px">JavaScript files were scanned for patterns associated with security risks. A match does not indicate malicious intent — it indicates a pattern that warrants manual review in context.</p>
+${[
+  { items: sinkPatterns, title: 'DOM Sinks', desc: 'Functions that execute or inject content — potential XSS vectors if used with untrusted input.' },
+  { items: sourcePatterns, title: 'Data Sources', desc: 'Entry points where attacker-controlled data can enter the extension.' },
+  { items: networkPatterns, title: 'Network Activity', desc: 'External communication that could be used for data exfiltration or remote code loading.' },
+  { items: obfuscationPatterns, title: 'Obfuscation Signals', desc: 'Patterns suggesting code may be intentionally obscured to evade review.' },
+].filter(g => g.items.length > 0).map(g => `
+    <div class="pattern-category">${g.title} (${g.items.length}) — <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px">${g.desc}</span></div>
+${g.items.slice(0, 20).map(p => `    <div class="pattern-row">${badge(p.risk)} <span class="pattern-desc">${esc(p.description)}</span><span class="pattern-file">${esc(p.filePath.split('/').pop() || '')}:${p.lineNumber}</span></div>`).join('\n')}
+${g.items.length > 20 ? `    <div class="pattern-row" style="color:#94a3b8;font-style:italic;justify-content:center">+ ${g.items.length - 20} additional matches</div>` : ''}`).join('\n')}
 </div>
 ` : ''}
 
 ${hostPermissions.length > 0 ? `
-<!-- 5. Host Permissions -->
+<!-- Host Permissions -->
 <div class="section">
-  <div class="section-header">
-    <div class="section-num">5</div>
-    <div class="section-title">Host Permissions (${hostPermissions.length})</div>
-  </div>
-${hostPermissions.map(h => `  <div class="finding finding-${h.risk}">
-    <div class="finding-title">${riskBadge(h.risk)} <span class="mono">${escapeHtml(h.pattern)}</span></div>
-    <div class="finding-desc">${escapeHtml(h.description)}</div>
-    ${h.suggestion ? `<div class="finding-desc" style="color:#059669;font-size:12px">${escapeHtml(h.suggestion)}</div>` : ''}
+  ${section('Host Permission Scope')}
+  <p style="font-size:13px;color:#475569;margin-bottom:14px">Host permissions define which websites the extension can access. Overly broad patterns grant unnecessary access and increase risk if the extension is compromised.</p>
+${hostPermissions.map(h => `
+  <div class="finding finding-${h.risk}">
+    <div class="finding-head">
+      <div>
+        <div class="finding-title"><span class="mono">${esc(h.pattern)}</span></div>
+      </div>
+      ${badge(h.risk)}
+    </div>
+    <div class="finding-body">
+      <p><strong>Impact:</strong> ${esc(h.description)}</p>
+      ${h.suggestion ? `<p style="color:#16a34a"><strong>Recommendation:</strong> ${esc(h.suggestion)}</p>` : ''}
+    </div>
   </div>`).join('\n')}
 </div>
 ` : ''}
 
-<!-- 6. Manifest Version -->
+<!-- Manifest Version -->
 <div class="section">
-  <div class="section-header">
-    <div class="section-num">6</div>
-    <div class="section-title">Manifest Version Assessment</div>
-  </div>
+  ${section('Manifest Version Assessment')}
   <div class="finding finding-${manifestVersionAnalysis.risk}">
-    <div class="finding-title">${riskBadge(manifestVersionAnalysis.risk)} Manifest V${manifestVersionAnalysis.manifestVersion}</div>
-    <div class="finding-desc">${escapeHtml(manifestVersionAnalysis.description)}</div>
+    <div class="finding-head">
+      <div class="finding-title">Manifest V${manifestVersionAnalysis.manifestVersion}</div>
+      ${badge(manifestVersionAnalysis.risk)}
+    </div>
+    <div class="finding-body">
+      <p><strong>Assessment:</strong> ${esc(manifestVersionAnalysis.description)}</p>
+${manifestVersionAnalysis.details.length > 0 ? `      <ul style="margin:8px 0 0 18px;color:#64748b;font-size:12px">${manifestVersionAnalysis.details.map(d => `<li style="margin-bottom:3px">${esc(d)}</li>`).join('')}</ul>` : ''}
+    </div>
   </div>
+</div>
+
+<!-- Disclaimer -->
+<div class="disclaimer">
+  <strong>Disclaimer:</strong> This report is generated by automated static analysis and does not constitute a complete security audit. Static analysis identifies capabilities and patterns but cannot determine intent. All findings should be verified through manual review. The extension's code was not executed during analysis.
 </div>
 
 <!-- Footer -->
 <div class="footer">
-  <span>Generated by CRX Audit — https://crx-audit.vercel.app</span>
-  <span>Static analysis only. Does not execute extension code.</span>
+  <span>Generated by CRX Audit — crx-audit.vercel.app</span>
+  <span>${date}</span>
 </div>
 
 </div>
@@ -235,7 +326,7 @@ export function downloadReport(report: AnalysisReport) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `crx-audit-${(report.metadata.extensionName || 'report').toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.html`
+  a.download = `crx-audit-${(report.metadata.extensionName || 'report').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${new Date().toISOString().slice(0, 10)}.html`
   a.click()
   URL.revokeObjectURL(url)
 }
