@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { Search, Upload, FileText, ArrowRight } from 'lucide-react'
 import type { ExtensionFiles, InputMethod } from '../types'
-import { extractExtensionId } from '../utils/helpers'
+import { extractExtensionId, extractExtensionName } from '../utils/helpers'
 import { extractFromFile, extractFromManifest, extractFromId } from '../analyzer/crx-extractor'
 
 type Tab = 'id' | 'upload' | 'paste'
@@ -108,6 +108,14 @@ export default function ExtensionInput({ onAnalyze }: ExtensionInputProps) {
             <label className="block text-[12px] font-mono text-[var(--color-text-tertiary)] uppercase tracking-wider">
               Paste a Chrome Web Store URL
             </label>
+            {extractExtensionName(idInput) && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/8 border border-amber-500/15">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                <span className="text-[13px] font-display font-medium text-amber-400">
+                  {extractExtensionName(idInput)}
+                </span>
+              </div>
+            )}
             <div className="flex gap-2">
               <input
                 type="text"

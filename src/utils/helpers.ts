@@ -14,6 +14,20 @@ export function extractExtensionId(input: string): string | null {
   return null
 }
 
+export function extractExtensionName(input: string): string | null {
+  const patterns = [
+    /chromewebstore\.google\.com\/detail\/([^/]+)\/[a-p]{32}/,
+    /chrome\.google\.com\/webstore\/detail\/([^/]+)\/[a-p]{32}/,
+  ]
+  for (const pattern of patterns) {
+    const match = input.trim().match(pattern)
+    if (match && match[1]) {
+      return match[1].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+    }
+  }
+  return null
+}
+
 export function riskColor(risk: RiskLevel): string {
   switch (risk) {
     case 'critical': return 'bg-red-500/15 text-red-400 border-red-500/25'
