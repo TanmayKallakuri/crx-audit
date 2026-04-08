@@ -1,0 +1,142 @@
+import JSZip from 'jszip'
+import type { ExtensionFiles } from '../types'
+
+/**
+ * Parse a CRX3 file and return the ZIP portion as an ArrayBuffer.
+ * CRX3 format:
+ *   - 4 bytes magic: "Cr24" (0x43723234)
+ *   - 4 bytes version (uint32 LE, should be 3)
+ *   - 4 bytes header length (uint32 LE)
+ *   - <header_length> bytes of protobuf header
+ *   - rest is ZIP data
+ */
+function extractZipFromCrx(buffer: ArrayBuffer): ArrayBuffer {
+  const view = new DataView(buffer)
+
+  // Check magic bytes "Cr24"
+  const magic = String.fromCharCode(
+    view.getUint8(0),
+    view.getUint8(1),
+    view.getUint8(2),
+    view.getUint8(3),
+  )
+
+  if (magic !== 'Cr24') {
+    // Not a CRX file — return as-is and let JSZip try it as a plain ZIP
+    return buffer
+  }
+
+  const version = view.getUint32(4, true)
+  if (version !== 3) {
+    throw new Error(`Unsupported CRX version: ${version}. Only CRX3 is supported.`)
+  }
+
+  const headerLength = view.getUint32(8, true)
+  const zipStart = 12 + headerLength
+
+  return buffer.slice(zipStart)
+}
+
+/**
+ * Load a ZIP buffer and extract manifest.json + all .js files.
+ */
+async function extractFromZip(zipData: ArrayBuffer): Promise<ExtensionFiles> {
+  const zip = await JSZip.loadAsync(zipData)
+
+  // Find manifest.json
+  const manifestFile = zip.file('manifest.json')
+  if (!manifestFile) {
+    throw new Error('No manifest.json found in the extension archive.')
+  }
+
+  const manifestText = await manifestFile.async('text')
+  let manifest: Record<string, unknown>
+  try {
+    manifest = JSON.parse(manifestText)
+  } catch {
+    throw new Error('Failed to parse manifest.json — invalid JSON.')
+  }
+
+  // Extract all JS files
+  const jsFiles = new Map<string, string>()
+  const allFiles: string[] = []
+
+  const filePromises: Promise<void>[] = []
+
+  zip.forEach((relativePath, entry) => {
+    if (entry.dir) return
+    allFiles.push(relativePath)
+
+    if (relativePath.endsWith('.js') || relativePath.endsWith('.mjs')) {
+      filePromises.push(
+        entry.async('text').then((content) => {
+          jsFiles.set(relativePath, content)
+        }),
+      )
+    }
+  })
+
+  await Promise.all(filePromises)
+
+  return { manifest, jsFiles, allFiles }
+}
+
+/**
+ * Extract extension files from an uploaded .crx or .zip file.
+ */
+export async function extractFromFile(file: File): Promise<ExtensionFiles> {
+  const buffer = await file.arrayBuffer()
+  const zipData = extractZipFromCrx(buffer)
+  return extractFromZip(zipData)
+}
+
+/**
+ * Parse a pasted manifest JSON string and return ExtensionFiles
+ * with an empty JS files map.
+ */
+export function extractFromManifest(json: string): ExtensionFiles {
+  let manifest: Record<string, unknown>
+  try {
+    manifest = JSON.parse(json)
+  } catch {
+    throw new Error('Invalid JSON — could not parse the pasted manifest.')
+  }
+
+  if (!manifest.manifest_version) {
+    throw new Error('This does not look like a manifest.json — missing manifest_version field.')
+  }
+
+  return {
+    manifest,
+    jsFiles: new Map(),
+    allFiles: ['manifest.json'],
+  }
+}
+
+/**
+ * Fetch a CRX from a proxy server and extract it.
+ * The proxy should accept GET /crx/:extensionId and return the raw CRX binary.
+ */
+export async function extractFromId(
+  extensionId: string,
+  proxyUrl?: string,
+): Promise<ExtensionFiles> {
+  if (!proxyUrl) {
+    throw new Error(
+      'A proxy server URL is required to download extensions by ID. ' +
+        'Chrome Web Store does not allow direct downloads from the browser. ' +
+        'Please upload a .crx file or paste a manifest instead.',
+    )
+  }
+
+  const url = `${proxyUrl.replace(/\/+$/, '')}/crx/${extensionId}`
+  const response = await fetch(url)
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch extension from proxy: ${response.status} ${response.statusText}`)
+  }
+
+  const buffer = await response.arrayBuffer()
+  const zipData = extractZipFromCrx(buffer)
+  return extractFromZip(zipData)
+}
