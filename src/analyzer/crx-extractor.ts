@@ -78,6 +78,9 @@ async function extractFromZip(zipData: ArrayBuffer): Promise<ExtensionFiles> {
 
   await Promise.all(filePromises)
 
+  // Resolve __MSG_*__ i18n strings in manifest
+  await resolveI18n(manifest, zip)
+
   return { manifest, jsFiles, allFiles }
 }
 
@@ -110,6 +113,45 @@ export function extractFromManifest(json: string): ExtensionFiles {
     manifest,
     jsFiles: new Map(),
     allFiles: ['manifest.json'],
+  }
+}
+
+/**
+ * Resolve __MSG_key__ i18n placeholders in manifest fields.
+ * Looks up the default_locale (or 'en') messages.json from _locales/.
+ */
+async function resolveI18n(manifest: Record<string, unknown>, zip: JSZip): Promise<void> {
+  const defaultLocale = (typeof manifest.default_locale === 'string' ? manifest.default_locale : 'en').toLowerCase()
+  const localePaths = [`_locales/${defaultLocale}/messages.json`, '_locales/en/messages.json']
+
+  let messages: Record<string, { message?: string }> = {}
+  for (const p of localePaths) {
+    const file = zip.file(p)
+    if (file) {
+      try {
+        messages = JSON.parse(await file.async('text'))
+        break
+      } catch { /* skip bad json */ }
+    }
+  }
+
+  if (Object.keys(messages).length === 0) return
+
+  const resolve = (val: unknown): unknown => {
+    if (typeof val === 'string') {
+      return val.replace(/__MSG_(\w+)__/g, (_, key: string) => {
+        const entry = messages[key] || messages[key.toLowerCase()]
+        return entry?.message ?? `__MSG_${key}__`
+      })
+    }
+    return val
+  }
+
+  // Resolve common string fields
+  for (const field of ['name', 'short_name', 'description', 'author']) {
+    if (typeof manifest[field] === 'string') {
+      manifest[field] = resolve(manifest[field])
+    }
   }
 }
 
