@@ -20,7 +20,7 @@ export default function ExtensionInput({ onAnalyze }: ExtensionInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: 'id', label: 'Extension ID', icon: <Search className="w-3.5 h-3.5" /> },
+    { key: 'id', label: 'Web Store URL', icon: <Search className="w-3.5 h-3.5" /> },
     { key: 'upload', label: 'Upload', icon: <Upload className="w-3.5 h-3.5" /> },
     { key: 'paste', label: 'Manifest', icon: <FileText className="w-3.5 h-3.5" /> },
   ]
@@ -106,14 +106,14 @@ export default function ExtensionInput({ onAnalyze }: ExtensionInputProps) {
         {activeTab === 'id' && (
           <div className="space-y-3 animate-fade-in">
             <label className="block text-[12px] font-mono text-[var(--color-text-tertiary)] uppercase tracking-wider">
-              Chrome Web Store ID or URL
+              Paste a Chrome Web Store URL
             </label>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={idInput}
                 onChange={(e) => setIdInput(e.target.value)}
-                placeholder="cjpalhdlnbpafiamejdnhcphjbkeiagm"
+                placeholder="https://chromewebstore.google.com/detail/extension-name/abc..."
                 className="flex-1 bg-[var(--color-surface-1)] border border-[var(--color-border)] rounded-lg px-4 py-3 text-sm font-mono text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
                 onKeyDown={(e) => e.key === 'Enter' && handleIdSubmit()}
               />
@@ -126,6 +126,9 @@ export default function ExtensionInput({ onAnalyze }: ExtensionInputProps) {
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
+            <p className="text-[11px] text-[var(--color-text-tertiary)]">
+              Copy the URL from any extension's Chrome Web Store page. Extension IDs also work.
+            </p>
           </div>
         )}
 
