@@ -113,30 +113,39 @@ export function extractFromManifest(json: string): ExtensionFiles {
   }
 }
 
+// Default proxy URL — set via VITE_PROXY_URL env var or falls back to this.
+// Deploy your own using proxy/worker.ts on Cloudflare Workers.
+const DEFAULT_PROXY = import.meta.env.VITE_PROXY_URL as string | undefined
+
 /**
- * Fetch a CRX from a proxy server and extract it.
- * The proxy should accept GET /crx/:extensionId and return the raw CRX binary.
+ * Fetch a CRX via the CORS proxy and extract it.
+ * The proxy validates the ID and forwards to Google's update endpoint.
  */
 export async function extractFromId(
   extensionId: string,
   proxyUrl?: string,
 ): Promise<ExtensionFiles> {
-  if (!proxyUrl) {
+  const base = proxyUrl || DEFAULT_PROXY
+  if (!base) {
     throw new Error(
-      'A proxy server URL is required to download extensions by ID. ' +
-        'Chrome Web Store does not allow direct downloads from the browser. ' +
-        'Please upload a .crx file or paste a manifest instead.',
+      'No proxy configured. Set VITE_PROXY_URL or deploy proxy/worker.ts to Cloudflare Workers. ' +
+        'Meanwhile, use file upload or paste manifest.',
     )
   }
 
-  const url = `${proxyUrl.replace(/\/+$/, '')}/crx/${extensionId}`
+  const url = `${base.replace(/\/+$/, '')}?id=${extensionId}`
   const response = await fetch(url)
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch extension from proxy: ${response.status} ${response.statusText}`)
+    const body = await response.text().catch(() => '')
+    throw new Error(`Proxy returned ${response.status}: ${body || response.statusText}`)
   }
 
   const buffer = await response.arrayBuffer()
+  if (buffer.byteLength < 100) {
+    throw new Error('Response too small — extension may not exist or was removed from the Web Store.')
+  }
+
   const zipData = extractZipFromCrx(buffer)
   return extractFromZip(zipData)
 }
