@@ -1,18 +1,17 @@
 {
   "name": "crx-audit",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
+  "description": "Chrome extension security analyzer — transparent permission analysis, dangerous combination detection, and CSP evaluation",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "author": "Tanmay Kallakuri",
+  "license": "MIT",
   "dependencies": {
     "jszip": "^3.10.1",
     "lucide-react": "^1.7.0",

@@ -3,3 +3,4 @@ dist/
 .env
 *.local
 tests/fixtures/*.crx
+.wrangler/
