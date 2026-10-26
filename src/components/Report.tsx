@@ -5,6 +5,7 @@ import CombinationCards from './CombinationCards'
 import CSPSection from './CSPSection'
 import CodePatterns from './CodePatterns'
 import HostPermissions from './HostPermissions'
+import WebAccessibleResources from './WebAccessibleResources'
 import ManifestVersion from './ManifestVersion'
 
 interface ReportProps {
@@ -25,6 +26,9 @@ export default function Report({ report }: ReportProps) {
       )}
       {report.hostPermissions.length > 0 && (
         <HostPermissions findings={report.hostPermissions} />
+      )}
+      {report.webAccessibleResources.length > 0 && (
+        <WebAccessibleResources findings={report.webAccessibleResources} />
       )}
       <ManifestVersion finding={report.manifestVersionAnalysis} />
     </div>
