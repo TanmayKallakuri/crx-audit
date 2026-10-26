@@ -9,6 +9,7 @@ import type {
 import { analyzeCSP } from './csp-analyzer'
 import { scanCode } from './code-scanner'
 import { analyzeHostPermissions } from './host-analyzer'
+import { analyzeWebAccessibleResources } from './web-accessible-analyzer'
 import { parseManifest } from './manifest-parser'
 import { permissionMap } from '../data/permissions'
 import { dangerousCombinations } from '../data/dangerous-combos'
@@ -98,6 +99,7 @@ export function analyzeExtension(
   const csp = analyzeCSP(manifest)
   const codePatterns = scanCode(jsFiles, manifest)
   const hostPermissions = analyzeHostPermissions(manifest)
+  const webAccessibleResources = analyzeWebAccessibleResources(manifest)
   const manifestVersionAnalysis = analyzeManifestVersion(manifest)
 
   const summary = {
@@ -108,6 +110,7 @@ export function analyzeExtension(
     cspFindings: csp.findings.length,
     codePatterns: codePatterns.length,
     hostFindings: hostPermissions.length,
+    webAccessibleFindings: webAccessibleResources.length,
   }
 
   return {
@@ -123,6 +126,7 @@ export function analyzeExtension(
     csp,
     codePatterns,
     hostPermissions,
+    webAccessibleResources,
     manifestVersionAnalysis,
     summary,
   }

@@ -22,13 +22,13 @@ function riskColor(risk: RiskLevel): string {
 }
 
 export function generateReport(report: AnalysisReport): string {
-  const { metadata, summary, permissions, combinations, csp, codePatterns, hostPermissions, manifestVersionAnalysis } = report
+  const { metadata, summary, permissions, combinations, csp, codePatterns, hostPermissions, webAccessibleResources, manifestVersionAnalysis } = report
   const date = new Date(metadata.analyzedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   const time = new Date(metadata.analyzedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 
   const critCount = summary.criticalPermissions + combinations.filter(c => c.risk === 'critical').length
   const overallRisk: RiskLevel = critCount >= 3 ? 'critical' : critCount >= 1 ? 'high' : summary.combinationsFound > 0 ? 'medium' : 'low'
-  const totalFindings = summary.criticalPermissions + summary.highPermissions + summary.combinationsFound + summary.cspFindings + summary.hostFindings
+  const totalFindings = summary.criticalPermissions + summary.highPermissions + summary.combinationsFound + summary.cspFindings + summary.hostFindings + summary.webAccessibleFindings
 
   const sinkPatterns = codePatterns.filter(p => p.category === 'sink')
   const sourcePatterns = codePatterns.filter(p => p.category === 'source')
@@ -79,7 +79,7 @@ body{font-family:var(--sans);color:var(--ink);background:var(--bg);font-size:13.
 .risk-statement strong{color:var(--ink)}
 
 /* ── Summary ── */
-.sum{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:44px}
+.sum{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:44px}
 .s{background:var(--bg);padding:18px 8px;text-align:center}
 .sv{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1}
 .sl{font-family:var(--mono);font-size:8.5px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--faint);margin-top:6px}
@@ -187,6 +187,7 @@ td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
   <div class="s"><div class="sv" style="color:#ca8a04">${summary.cspFindings}</div><div class="sl">CSP</div></div>
   <div class="s"><div class="sv" style="color:#2563eb">${summary.codePatterns}</div><div class="sl">Code</div></div>
   <div class="s"><div class="sv" style="color:#64748b">${summary.hostFindings}</div><div class="sl">Host</div></div>
+  <div class="s"><div class="sv" style="color:#0891b2">${summary.webAccessibleFindings}</div><div class="sl">WAR</div></div>
 </div>
 
 <!-- METHODOLOGY -->
@@ -199,6 +200,7 @@ td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
     <div class="mbox"><strong>CSP Evaluation</strong><span>Parsed Content Security Policy directives. Checked against 14+ known CSP bypass domains with documented exploit techniques.</span></div>
     <div class="mbox"><strong>Code Pattern Scan</strong><span>${metadata.inputMethod === 'paste' ? 'Not available — manifest-only analysis.' : 'All JavaScript files scanned for 40+ patterns across sinks, sources, network, and obfuscation categories.'}</span></div>
     <div class="mbox"><strong>Host Scope Analysis</strong><span>Evaluated host permission breadth and cross-referenced against sensitive domain categories (banking, crypto, email, CI/CD).</span></div>
+    <div class="mbox"><strong>Web-Accessible Exposure</strong><span>Evaluated web_accessible_resources and externally_connectable declarations for exposure of internal assets and messaging to arbitrary web origins.</span></div>
     <div class="mbox"><strong>Manifest Assessment</strong><span>Evaluated manifest version security implications and MV2 deprecation status.</span></div>
   </div>
 </div>
@@ -287,6 +289,25 @@ ${hostPermissions.map(h => `
     <div class="f-body">
       <p><strong>Impact:</strong> ${esc(h.description)}</p>
       ${h.suggestion ? `<p style="color:#16a34a"><strong>Recommendation:</strong> ${esc(h.suggestion)}</p>` : ''}
+    </div>
+  </div>`).join('\n')}
+</div>
+` : ''}
+
+${webAccessibleResources.length > 0 ? `
+<!-- WEB-ACCESSIBLE EXPOSURE -->
+<div class="section">
+  ${sec('Web-Accessible Exposure')}
+  <p class="section-intro">Web-accessible resources and externally_connectable declarations determine which extension-internal assets are readable by web pages, and which origins can message the extension. Overly broad exposure can enable fingerprinting, data extraction, or XSS-based privilege escalation.</p>
+${webAccessibleResources.map(w => `
+  <div class="f f-${w.risk}">
+    <div class="f-head">
+      <div><div class="f-title" style="font-size:13.5px"><span class="mono">${esc(w.type)}</span></div></div>
+      ${badge(w.risk)}
+    </div>
+    <div class="f-body">
+      <p><strong>Impact:</strong> ${esc(w.description)}</p>
+      ${w.suggestion ? `<p style="color:#16a34a"><strong>Recommendation:</strong> ${esc(w.suggestion)}</p>` : ''}
     </div>
   </div>`).join('\n')}
 </div>

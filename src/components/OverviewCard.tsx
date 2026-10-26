@@ -16,6 +16,7 @@ export default function OverviewCard({ report }: OverviewCardProps) {
     { label: 'CSP', value: summary.cspFindings, color: 'bg-yellow-500', text: 'text-yellow-400' },
     { label: 'CODE', value: summary.codePatterns, color: 'bg-blue-500', text: 'text-blue-400' },
     { label: 'HOST', value: summary.hostFindings, color: 'bg-purple-500', text: 'text-purple-400' },
+    { label: 'WAR', value: summary.webAccessibleFindings, color: 'bg-cyan-500', text: 'text-cyan-400' },
   ]
 
   const totalFindings = summary.criticalPermissions + summary.highPermissions + summary.combinationsFound

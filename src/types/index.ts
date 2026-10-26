@@ -63,6 +63,13 @@ export interface ManifestVersionFinding {
   details: string[]
 }
 
+export interface WebAccessibleResourceFinding {
+  type: 'broad-exposure' | 'sensitive-resource' | 'broad-connectable'
+  risk: RiskLevel
+  description: string
+  suggestion?: string
+}
+
 export interface AnalysisReport {
   metadata: {
     extensionName: string
@@ -76,6 +83,7 @@ export interface AnalysisReport {
   csp: CSPAnalysisResult
   codePatterns: CodePatternMatch[]
   hostPermissions: HostPermissionFinding[]
+  webAccessibleResources: WebAccessibleResourceFinding[]
   manifestVersionAnalysis: ManifestVersionFinding
   summary: {
     totalPermissions: number
@@ -85,6 +93,7 @@ export interface AnalysisReport {
     cspFindings: number
     codePatterns: number
     hostFindings: number
+    webAccessibleFindings: number
   }
 }
 
